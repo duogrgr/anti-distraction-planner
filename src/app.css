@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@source "../**/*.{html,js,svelte,ts}";
+
+@theme {
+  --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* Светлая тема по умолчанию */
+:root,
+html[data-theme="light"] {
+  --color-background: #ffffff;
+  --color-foreground: #0a0a0a;
+}
+
+/* Тёмная тема */
+html[data-theme="dark"] {
+  --color-background: #1a1a1a;
+  --color-foreground: #ffffff;
+}
+
+/* Авто режим — если нет явного выбора */
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) {
+    --color-background: #1a1a1a;
+    --color-foreground: #ffffff;
+  }
+}
+
+/* Глобальные сбросы */
+html, body {
+  margin: 0;
+  padding: 0;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+/* Safe area для iOS */
+body {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
