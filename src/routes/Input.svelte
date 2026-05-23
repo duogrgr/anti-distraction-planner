@@ -1,5 +1,6 @@
 <script>
   import { useTasks } from '../lib/stores/tasks.svelte.js'
+  import { onMount } from 'svelte'
   
   let { task = null, onDone = () => {} } = $props()
   
@@ -7,9 +8,17 @@
   
   let text = $state(task?.text || '')
   let repeat = $state(task?.repeat || 'none')
+  let textareaElement
   
   const isEditing = $derived(task !== null)
   const title = $derived(isEditing ? 'EDIT TASK' : 'NEW TASK')
+  
+  onMount(() => {
+    // Автофокус с задержкой для мобильных
+    setTimeout(() => {
+      textareaElement?.focus()
+    }, 100)
+  })
   
   async function save() {
     if (!text.trim()) return
@@ -39,6 +48,7 @@
   </header>
   
   <textarea
+    bind:this={textareaElement}
     bind:value={text}
     onkeydown={handleKeydown}
     placeholder="what needs to be done?"
