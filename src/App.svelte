@@ -2,11 +2,12 @@
   import { useTasks } from './lib/stores/tasks.svelte.js'
   import { useTheme } from './lib/stores/theme.svelte.js'
   import { onMount } from 'svelte'
+  import { fly } from 'svelte/transition'
   import { flip } from 'svelte/animate'
   import Input from './routes/Input.svelte'
   import Calendar from './routes/Calendar.svelte'
   import Settings from './routes/Settings.svelte'
-  import { swipe } from './lib/gestures.js'
+  import { daySwipe } from './lib/daySwipe.js'
   
   const store = useTasks()
   const theme = useTheme()
@@ -18,7 +19,20 @@
   let longPressTimer = $state(null)
   let longPressTriggered = $state(false)
   
-  // Кастомная transition: объединяет fade и scale
+  // Направление слайда для анимации
+  let slideDirection = $state('left')
+  
+  // Сегодняшний день и проверка "не старше 7 дней"
+  const today = $derived(new Date().toISOString().split('T')[0])
+  const isToday = $derived(currentDate === today)
+  
+  const minDate = $derived.by(() => {
+    const d = new Date()
+    d.setDate(d.getDate() - 7)
+    return d.toISOString().split('T')[0]
+  })
+  const canGoBack = $derived(currentDate > minDate)
+  
   function fadeScale(node, { duration = 400, easing = (t) => t, baseScale = 0.95 } = {}) {
     return {
       duration,
@@ -37,6 +51,23 @@
     return date.toLocaleDateString('en-US', options).toUpperCase()
   }
   
+  function changeDate(days) {
+    slideDirection = days > 0 ? 'left' : 'right'
+    const date = new Date(currentDate)
+    date.setDate(date.getDate() + days)
+    const newDate = date.toISOString().split('T')[0]
+    
+    if (newDate < minDate) return
+    
+    currentDate = newDate
+  }
+  
+  function goToday() {
+    if (isToday) return
+    slideDirection = currentDate < today ? 'left' : 'right'
+    currentDate = today
+  }
+  
   function openNewTask() {
     editingTask = null
     currentScreen = 'input'
@@ -53,6 +84,7 @@
   }
   
   function handleDateSelect(date) {
+    slideDirection = date > currentDate ? 'left' : 'right'
     currentDate = date
     currentScreen = 'today'
   }
@@ -65,6 +97,14 @@
       if (navigator.vibrate) navigator.vibrate(30)
       openEditTask(task)
     }, 500)
+  }
+  
+  function handleTouchMove() {
+    // Движение пальца отменяет long press (чтобы не конфликтовало со свайпом)
+    if (longPressTimer) {
+      clearTimeout(longPressTimer)
+      longPressTimer = null
+    }
   }
   
   function handleTouchEnd(task) {
@@ -93,137 +133,124 @@
     
     store.toggleComplete(task.id)
   }
-  
-  function swipeLeft() {
-    if (currentScreen === 'calendar') currentScreen = 'today'
-    else if (currentScreen === 'today') currentScreen = 'input'
-  }
-  
-  function swipeRight() {
-    if (currentScreen === 'input') currentScreen = 'today'
-    else if (currentScreen === 'today') currentScreen = 'calendar'
-  }
-  
-  function goTo(screen) {
-    currentScreen = screen
-  }
 </script>
 
-<div use:swipe={{ onSwipeLeft: swipeLeft, onSwipeRight: swipeRight, threshold: 80 }}>
-  {#if currentScreen === 'calendar'}
-    <Calendar onSelectDate={handleDateSelect} />
-  {:else if currentScreen === 'today'}
-    <div class="min-h-screen bg-background text-foreground p-8 flex flex-col">
-      <header class="mb-12 flex justify-between items-start">
-        <button 
-          onclick={() => currentScreen = 'calendar'}
-          class="text-sm font-normal opacity-40 hover:opacity-100 transition-opacity"
-        >
-          {formatDate(currentDate)}
-        </button>
-        <div class="flex gap-4 items-center">
-          <button 
-            onclick={theme.cycle}
-            class="text-lg font-normal opacity-40 hover:opacity-100 transition-opacity"
-            title={theme.label}
-          >
-            {theme.icon}
-          </button>
-          <button 
-            onclick={openNewTask}
-            class="text-2xl font-bold opacity-40 hover:opacity-100 transition-opacity"
-          >
-            +
-          </button>
-        </div>
-      </header>
-      
-      <main class="flex-1">
-        {#if store.error}
-          <p class="text-2xl font-bold text-red-500">Error: {store.error}</p>
-        {:else if store.isLoading}
-          <p class="text-4xl font-bold opacity-40">Loading...</p>
-        {:else if store.getTasksForDate(currentDate).length === 0}
-          <div class="task-list">
+{#if currentScreen === 'calendar'}
+  <Calendar onSelectDate={handleDateSelect} />
+{:else if currentScreen === 'today'}
+  <div 
+    class="min-h-screen bg-background text-foreground flex flex-col overflow-hidden"
+    use:daySwipe={{ 
+      onSwipeLeft: () => changeDate(1), 
+      onSwipeRight: () => changeDate(-1),
+      canSwipeRight: () => canGoBack,
+      threshold: 80
+    }}
+  >
+    {#key currentDate}
+      <div
+        class="flex-1 flex flex-col p-8"
+        in:fly={{ x: slideDirection === 'left' ? 300 : -300, duration: 280, easing: (t) => 1 - Math.pow(1 - t, 3) }}
+        out:fly={{ x: slideDirection === 'left' ? -300 : 300, duration: 280, easing: (t) => 1 - Math.pow(1 - t, 3) }}
+      >
+        <header class="mb-12 flex justify-between items-start">
+          <div class="flex flex-col items-start gap-1">
             <button 
-              onclick={openNewTask} 
-              class="task-text font-bold opacity-40 hover:opacity-100 transition-opacity w-full"
-              style="text-align: var(--list-alignment)"
+              onclick={() => currentScreen = 'calendar'}
+              class="text-sm font-normal opacity-40 hover:opacity-100 transition-opacity"
             >
-              CLEAR MIND
+              {formatDate(currentDate)}
+            </button>
+            
+            {#if !isToday}
+              <button 
+                onclick={goToday}
+                class="text-xs font-bold opacity-60 hover:opacity-100 transition-opacity"
+              >
+                → TODAY
+              </button>
+            {/if}
+          </div>
+          
+          <div class="flex gap-4 items-center">
+            <button 
+              onclick={theme.cycle}
+              class="text-lg font-normal opacity-40 hover:opacity-100 transition-opacity"
+              title={theme.label}
+            >
+              {theme.icon}
+            </button>
+            <button 
+              onclick={openNewTask}
+              class="text-2xl font-bold opacity-40 hover:opacity-100 transition-opacity"
+            >
+              +
             </button>
           </div>
-        {:else}
-          <ul class="task-list space-y-6">
-            {#each store.getTasksForDate(currentDate) as task (task.id)}
-              <li
-                transition:fadeScale={{ duration: 400, baseScale: 0.95 }}
-                animate:flip={{ duration: 300, easing: (t) => 1 - Math.pow(1 - t, 3) }}
+        </header>
+        
+        <main class="flex-1">
+          {#if store.error}
+            <p class="text-2xl font-bold text-red-500">Error: {store.error}</p>
+          {:else if store.isLoading}
+            <p class="text-4xl font-bold opacity-40">Loading...</p>
+          {:else if store.getTasksForDate(currentDate).length === 0}
+            <div class="task-list">
+              <button 
+                onclick={openNewTask} 
+                class="task-text font-bold opacity-40 hover:opacity-100 transition-opacity w-full"
+                style="text-align: var(--list-alignment)"
               >
-                <button
-                  class="w-full task-text font-bold transition-all duration-300 active:opacity-50"
-                  class:line-through={task.completedDates.includes(currentDate)}
-                  class:opacity-30={task.completedDates.includes(currentDate)}
-                  style="text-align: var(--list-alignment)"
-                  ontouchstart={() => handleTouchStart(task)}
-                  ontouchend={() => handleTouchEnd(task)}
-                  ontouchcancel={handleTouchCancel}
-                  onclick={(e) => handleClick(e, task)}
-                  oncontextmenu={(e) => {
-                    e.preventDefault()
-                    openEditTask(task)
-                  }}
+                CLEAR MIND
+              </button>
+            </div>
+          {:else}
+            <ul class="task-list space-y-6">
+              {#each store.getTasksForDate(currentDate) as task (task.id)}
+                <li
+                  transition:fadeScale={{ duration: 400, baseScale: 0.95 }}
+                  animate:flip={{ duration: 300, easing: (t) => 1 - Math.pow(1 - t, 3) }}
                 >
-                  {task.text}
-                </button>
-              </li>
-            {/each}
-          </ul>
-          
-          <p class="mt-8 text-xs font-normal opacity-20 text-center">
-            TAP TO COMPLETE · HOLD TO EDIT
-          </p>
-        {/if}
-      </main>
-      
-      <footer class="mt-8 flex justify-between items-center">
-        <button 
-          onclick={() => currentScreen = 'settings'}
-          class="text-sm font-normal opacity-30 hover:opacity-100 transition-opacity"
-        >
-          ⚙
-        </button>
+                  <button
+                    class="w-full task-text font-bold transition-all duration-300 active:opacity-50"
+                    class:line-through={task.completedDates.includes(currentDate)}
+                    class:opacity-30={task.completedDates.includes(currentDate)}
+                    style="text-align: var(--list-alignment)"
+                    ontouchstart={() => handleTouchStart(task)}
+                    ontouchmove={handleTouchMove}
+                    ontouchend={() => handleTouchEnd(task)}
+                    ontouchcancel={handleTouchCancel}
+                    onclick={(e) => handleClick(e, task)}
+                    oncontextmenu={(e) => {
+                      e.preventDefault()
+                      openEditTask(task)
+                    }}
+                  >
+                    {task.text}
+                  </button>
+                </li>
+              {/each}
+            </ul>
+            
+            <p class="mt-8 text-xs font-normal opacity-20 text-center">
+              TAP TO COMPLETE · HOLD TO EDIT · SWIPE TO CHANGE DAY
+            </p>
+          {/if}
+        </main>
         
-        <div class="flex justify-center gap-3">
+        <footer class="mt-8 flex justify-start items-center">
           <button 
-            onclick={() => goTo('calendar')}
-            class="w-3 h-3 rounded-full transition-opacity"
-            class:bg-foreground={currentScreen === 'calendar'}
-            class:opacity-20={currentScreen !== 'calendar'}
-            aria-label="Calendar"
-          ></button>
-          <button 
-            onclick={() => goTo('today')}
-            class="w-3 h-3 rounded-full transition-opacity"
-            class:bg-foreground={currentScreen === 'today'}
-            class:opacity-20={currentScreen !== 'today'}
-            aria-label="Today"
-          ></button>
-          <button 
-            onclick={() => goTo('input')}
-            class="w-3 h-3 rounded-full transition-opacity"
-            class:bg-foreground={currentScreen === 'input'}
-            class:opacity-20={currentScreen !== 'input'}
-            aria-label="Add task"
-          ></button>
-        </div>
-        
-        <div class="w-6"></div>
-      </footer>
-    </div>
-  {:else if currentScreen === 'input'}
-    <Input task={editingTask} onDone={handleInputDone} />
-  {:else if currentScreen === 'settings'}
-    <Settings onClose={() => currentScreen = 'today'} />
-  {/if}
-</div>
+            onclick={() => currentScreen = 'settings'}
+            class="text-sm font-normal opacity-30 hover:opacity-100 transition-opacity"
+          >
+            ⚙
+          </button>
+        </footer>
+      </div>
+    {/key}
+  </div>
+{:else if currentScreen === 'input'}
+  <Input task={editingTask} onDone={handleInputDone} />
+{:else if currentScreen === 'settings'}
+  <Settings onClose={() => currentScreen = 'today'} />
+{/if}

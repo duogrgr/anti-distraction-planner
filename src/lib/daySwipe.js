@@ -1,4 +1,4 @@
-export function swipe(node, { onSwipeLeft, onSwipeRight, threshold = 60 }) {
+export function daySwipe(node, { onSwipeLeft, onSwipeRight, canSwipeRight = () => true, threshold = 80 }) {
   let startX = 0
   let startY = 0
   let currentX = 0
@@ -26,12 +26,16 @@ export function swipe(node, { onSwipeLeft, onSwipeRight, threshold = 60 }) {
     
     if (direction !== 'horizontal') return
     
-    // Блокируем только горизонтальное движение
     event.preventDefault()
-    
     currentX = deltaX
-    const clampedX = applyResistance(currentX, node.clientWidth)
-    node.style.transform = `translateX(${clampedX}px)`
+    
+    // Резиновый эффект при попытке уйти за границу
+    let effectiveX = currentX
+    if (currentX > 0 && !canSwipeRight()) {
+      effectiveX = currentX * 0.3
+    }
+    
+    node.style.transform = `translateX(${effectiveX}px)`
   }
   
   function handleEnd() {
@@ -39,31 +43,42 @@ export function swipe(node, { onSwipeLeft, onSwipeRight, threshold = 60 }) {
     isDragging = false
     direction = null
     
-    node.style.transition = 'transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1)'
+    node.style.transition = 'transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1)'
+    
+    const canGoBack = canSwipeRight()
     
     if (Math.abs(currentX) > threshold) {
-      const endX = currentX > 0 ? node.clientWidth : -node.clientWidth
-      node.style.transform = `translateX(${endX}px)`
-      
-      setTimeout(() => {
-        node.style.transition = 'none'
+      if (currentX > 0 && canGoBack) {
+        // Свайп вправо = вчера
+        node.style.transform = `translateX(${node.clientWidth}px)`
+        setTimeout(() => {
+          node.style.transition = 'none'
+          node.style.transform = 'translateX(0)'
+          onSwipeRight()
+        }, 250)
+      } else if (currentX < 0) {
+        // Свайп влево = завтра
+        node.style.transform = `translateX(${-node.clientWidth}px)`
+        setTimeout(() => {
+          node.style.transition = 'none'
+          node.style.transform = 'translateX(0)'
+          onSwipeLeft()
+        }, 250)
+      } else {
+        // Запрещено (старше 7 дней) — возврат + вибрация
         node.style.transform = 'translateX(0)'
-        
-        if (currentX > 0 && onSwipeRight) onSwipeRight()
-        else if (currentX < 0 && onSwipeLeft) onSwipeLeft()
-      }, 300)
+        if (navigator.vibrate) navigator.vibrate(30)
+      }
     } else {
+      // Недотянул — возврат
       node.style.transform = 'translateX(0)'
     }
     
     currentX = 0
   }
   
-  // Используем Pointer Events — они работают для всего: touch, mouse, pen
   function handlePointerDown(e) {
-    // Игнорируем нажатия на кнопки и интерактивные элементы
     if (e.target.closest('button, a, input, textarea')) return
-    
     node.setPointerCapture(e.pointerId)
     handleStart(e.clientX, e.clientY)
   }
@@ -76,41 +91,24 @@ export function swipe(node, { onSwipeLeft, onSwipeRight, threshold = 60 }) {
     handleEnd()
   }
   
-  function handlePointerCancel() {
-    handleEnd()
-  }
-  
   node.addEventListener('pointerdown', handlePointerDown)
   node.addEventListener('pointermove', handlePointerMove)
   node.addEventListener('pointerup', handlePointerUp)
-  node.addEventListener('pointercancel', handlePointerCancel)
-  
-  // Запрещаем горизонтальный скролл страницы на touch-устройствах
+  node.addEventListener('pointercancel', handlePointerUp)
   node.style.touchAction = 'pan-y'
   
   return {
     update(params) {
       onSwipeLeft = params.onSwipeLeft
       onSwipeRight = params.onSwipeRight
-      threshold = params.threshold || 60
+      canSwipeRight = params.canSwipeRight || (() => true)
+      threshold = params.threshold || 80
     },
     destroy() {
       node.removeEventListener('pointerdown', handlePointerDown)
       node.removeEventListener('pointermove', handlePointerMove)
       node.removeEventListener('pointerup', handlePointerUp)
-      node.removeEventListener('pointercancel', handlePointerCancel)
+      node.removeEventListener('pointercancel', handlePointerUp)
     }
   }
-}
-
-function applyResistance(delta, width) {
-  const maxOvershoot = width * 0.2
-  const resistance = 0.3
-  
-  if (Math.abs(delta) > maxOvershoot) {
-    const sign = Math.sign(delta)
-    const overshoot = Math.abs(delta) - maxOvershoot
-    return sign * (maxOvershoot + overshoot * resistance)
-  }
-  return delta
 }
