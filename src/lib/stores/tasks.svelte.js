@@ -4,6 +4,9 @@ let tasks = $state([])
 let isLoading = $state(true)
 let error = $state(null)
 
+// Map для хранения таймеров автоудаления
+const dissolveTimers = new Map()
+
 export function useTasks() {
   async function load() {
     try {
@@ -44,40 +47,64 @@ export function useTasks() {
       completedDates: [],
     }
     await addTask(task)
-    tasks = [...tasks, task] // Триггерим реактивность
+    tasks = [...tasks, task]
   }
 
   async function toggleComplete(id) {
-    const task = tasks.find((t) => t.id === id)
-    if (!task) return
-
+    const taskIndex = tasks.findIndex((t) => t.id === id)
+    if (taskIndex === -1) return
+    
+    const task = tasks[taskIndex]
     const today = getToday()
     const isCompleted = task.completedDates.includes(today)
 
+    // Очищаем предыдущий таймер, если был
+    if (dissolveTimers.has(id)) {
+      clearTimeout(dissolveTimers.get(id))
+      dissolveTimers.delete(id)
+    }
+
     if (isCompleted) {
+      // Undo
       task.completedDates = task.completedDates.filter((d) => d !== today)
       task.isCompleting = false
+      task.isDissolving = false
       await updateTask(task)
+      tasks = tasks.map((t, i) => i === taskIndex ? { ...task } : t)
     } else {
-      task.completedDates = [...task.completedDates, today] // Триггерим реактивность
+      // Complete
+      task.completedDates = [...task.completedDates, today]
       task.isCompleting = true
       await updateTask(task)
+      tasks = tasks.map((t, i) => i === taskIndex ? { ...task } : t)
 
-      setTimeout(async () => {
-        task.isDissolving = true
+      // Запускаем таймер автоудаления через 20 сек
+      const timer = setTimeout(async () => {
+        dissolveTimers.delete(id)
+        
+        // Находим свежую версию задачи
+        const freshIndex = tasks.findIndex((t) => t.id === id)
+        if (freshIndex === -1) return
+        
+        const freshTask = tasks[freshIndex]
+        freshTask.isDissolving = true
+        tasks = tasks.map((t, i) => i === freshIndex ? { ...freshTask } : t)
         
         // Ждём анимацию dissolve
         await new Promise((resolve) => setTimeout(resolve, 400))
         
-        if (task.repeat === 'none') {
+        if (freshTask.repeat === 'none') {
           await deleteTask(id)
-          tasks = tasks.filter((t) => t.id !== id) // Триггерим реактивность
+          tasks = tasks.filter((t) => t.id !== id)
         } else {
-          task.isDissolving = false
-          task.isCompleting = false
-          await updateTask(task)
+          freshTask.isDissolving = false
+          freshTask.isCompleting = false
+          await updateTask(freshTask)
+          tasks = tasks.map((t, i) => i === freshIndex ? { ...freshTask } : t)
         }
       }, 20000)
+      
+      dissolveTimers.set(id, timer)
     }
   }
 
@@ -87,12 +114,16 @@ export function useTasks() {
 
     const task = { ...tasks[taskIndex], ...updates }
     await updateTask(task)
-    tasks = tasks.map((t, i) => i === taskIndex ? task : t) // Триггерим реактивность
+    tasks = tasks.map((t, i) => i === taskIndex ? task : t)
   }
 
   async function remove(id) {
+    if (dissolveTimers.has(id)) {
+      clearTimeout(dissolveTimers.get(id))
+      dissolveTimers.delete(id)
+    }
     await deleteTask(id)
-    tasks = tasks.filter((t) => t.id !== id) // Триггерим реактивность
+    tasks = tasks.filter((t) => t.id !== id)
   }
 
   return {

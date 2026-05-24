@@ -14,7 +14,6 @@
   let currentScreen = $state('today')
   let editingTask = $state(null)
   
-  // Для long press
   let longPressTimer = $state(null)
   let longPressTriggered = $state(false)
   
@@ -38,12 +37,6 @@
     currentScreen = 'input'
   }
   
-  async function deleteTask(task) {
-    if (confirm(`Delete "${task.text}"?`)) {
-      await store.remove(task.id)
-    }
-  }
-  
   function handleInputDone() {
     currentScreen = 'today'
     editingTask = null
@@ -54,11 +47,11 @@
     currentScreen = 'today'
   }
   
-  // Long press логика
   function handleTouchStart(task) {
     longPressTriggered = false
     longPressTimer = setTimeout(() => {
       longPressTriggered = true
+      if (navigator.vibrate) navigator.vibrate(30)
       openEditTask(task)
     }, 500)
   }
@@ -68,8 +61,6 @@
       clearTimeout(longPressTimer)
       longPressTimer = null
     }
-    
-    // Если long press не сработал — это обычный тап
     if (!longPressTriggered) {
       if (!task.completedDates.includes(currentDate)) {
         store.toggleComplete(task.id)
@@ -94,6 +85,10 @@
   function swipeRight() {
     if (currentScreen === 'input') currentScreen = 'today'
     else if (currentScreen === 'today') currentScreen = 'calendar'
+  }
+  
+  function goTo(screen) {
+    currentScreen = screen
   }
 </script>
 
@@ -139,7 +134,7 @@
           <ul class="space-y-6">
             {#each store.getTasksForDate(currentDate) as task (task.id)}
               <li
-                class="text-4xl font-bold cursor-pointer transition-all duration-300 select-none"
+                class="text-4xl font-bold cursor-pointer transition-all duration-300 select-none active:opacity-50"
                 class:line-through={task.completedDates.includes(currentDate)}
                 class:opacity-30={task.completedDates.includes(currentDate)}
                 class:blur-sm={task.isDissolving}
@@ -148,7 +143,6 @@
                 ontouchend={() => handleTouchEnd(task)}
                 ontouchcancel={handleTouchCancel}
                 onclick={(e) => {
-                  // Для десктопа без touch
                   if (e.pointerType === 'mouse' || e.pointerType === 'pen') {
                     if (!task.completedDates.includes(currentDate)) {
                       store.toggleComplete(task.id)
@@ -165,7 +159,6 @@
             {/each}
           </ul>
           
-          <!-- Подсказка -->
           <p class="mt-8 text-xs font-normal opacity-20 text-center">
             TAP TO COMPLETE · HOLD TO EDIT
           </p>
@@ -180,10 +173,29 @@
           ⚙
         </button>
         
-        <div class="flex justify-center gap-2">
-          <div class="w-2 h-2 rounded-full opacity-20" class:bg-foreground={currentScreen === 'calendar'}></div>
-          <div class="w-2 h-2 rounded-full" class:bg-foreground={currentScreen === 'today'} class:opacity-20={currentScreen !== 'today'}></div>
-          <div class="w-2 h-2 rounded-full opacity-20" class:bg-foreground={currentScreen === 'input'}></div>
+        <!-- Кликабельные точки навигации (fallback для свайпов) -->
+        <div class="flex justify-center gap-3">
+          <button 
+            onclick={() => goTo('calendar')}
+            class="w-3 h-3 rounded-full transition-opacity"
+            class:bg-foreground={currentScreen === 'calendar'}
+            class:opacity-20={currentScreen !== 'calendar'}
+            aria-label="Calendar"
+          ></button>
+          <button 
+            onclick={() => goTo('today')}
+            class="w-3 h-3 rounded-full transition-opacity"
+            class:bg-foreground={currentScreen === 'today'}
+            class:opacity-20={currentScreen !== 'today'}
+            aria-label="Today"
+          ></button>
+          <button 
+            onclick={() => goTo('input')}
+            class="w-3 h-3 rounded-full transition-opacity"
+            class:bg-foreground={currentScreen === 'input'}
+            class:opacity-20={currentScreen !== 'input'}
+            aria-label="Add task"
+          ></button>
         </div>
         
         <div class="w-6"></div>

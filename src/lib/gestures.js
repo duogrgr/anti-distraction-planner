@@ -14,7 +14,7 @@ export function swipe(node, { onSwipeLeft, onSwipeRight, threshold = 60 }) {
     node.style.transition = 'none'
   }
   
-  function handleMove(x, y, preventDefault) {
+  function handleMove(x, y, event) {
     if (!isDragging) return
     
     const deltaX = x - startX
@@ -26,7 +26,8 @@ export function swipe(node, { onSwipeLeft, onSwipeRight, threshold = 60 }) {
     
     if (direction !== 'horizontal') return
     
-    if (preventDefault) preventDefault()
+    // Блокируем только горизонтальное движение
+    event.preventDefault()
     
     currentX = deltaX
     const clampedX = applyResistance(currentX, node.clientWidth)
@@ -58,39 +59,34 @@ export function swipe(node, { onSwipeLeft, onSwipeRight, threshold = 60 }) {
     currentX = 0
   }
   
-  // Touch events
-  function handleTouchStart(e) {
-    handleStart(e.touches[0].clientX, e.touches[0].clientY)
-  }
-  
-  function handleTouchMove(e) {
-    handleMove(e.touches[0].clientX, e.touches[0].clientY, () => e.preventDefault())
-  }
-  
-  function handleTouchEnd() {
-    handleEnd()
-  }
-  
-  // Mouse events (для десктопа)
-  function handleMouseDown(e) {
+  // Используем Pointer Events — они работают для всего: touch, mouse, pen
+  function handlePointerDown(e) {
+    // Игнорируем нажатия на кнопки и интерактивные элементы
+    if (e.target.closest('button, a, input, textarea')) return
+    
+    node.setPointerCapture(e.pointerId)
     handleStart(e.clientX, e.clientY)
   }
   
-  function handleMouseMove(e) {
-    handleMove(e.clientX, e.clientY)
+  function handlePointerMove(e) {
+    handleMove(e.clientX, e.clientY, e)
   }
   
-  function handleMouseUp() {
+  function handlePointerUp() {
     handleEnd()
   }
   
-  node.addEventListener('touchstart', handleTouchStart, { passive: true })
-  node.addEventListener('touchmove', handleTouchMove, { passive: false })
-  node.addEventListener('touchend', handleTouchEnd, { passive: true })
+  function handlePointerCancel() {
+    handleEnd()
+  }
   
-  node.addEventListener('mousedown', handleMouseDown)
-  window.addEventListener('mousemove', handleMouseMove)
-  window.addEventListener('mouseup', handleMouseUp)
+  node.addEventListener('pointerdown', handlePointerDown)
+  node.addEventListener('pointermove', handlePointerMove)
+  node.addEventListener('pointerup', handlePointerUp)
+  node.addEventListener('pointercancel', handlePointerCancel)
+  
+  // Запрещаем горизонтальный скролл страницы на touch-устройствах
+  node.style.touchAction = 'pan-y'
   
   return {
     update(params) {
@@ -99,13 +95,10 @@ export function swipe(node, { onSwipeLeft, onSwipeRight, threshold = 60 }) {
       threshold = params.threshold || 60
     },
     destroy() {
-      node.removeEventListener('touchstart', handleTouchStart)
-      node.removeEventListener('touchmove', handleTouchMove)
-      node.removeEventListener('touchend', handleTouchEnd)
-      
-      node.removeEventListener('mousedown', handleMouseDown)
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', handleMouseUp)
+      node.removeEventListener('pointerdown', handlePointerDown)
+      node.removeEventListener('pointermove', handlePointerMove)
+      node.removeEventListener('pointerup', handlePointerUp)
+      node.removeEventListener('pointercancel', handlePointerCancel)
     }
   }
 }
