@@ -14,9 +14,6 @@
   let currentScreen = $state('today')
   let editingTask = $state(null)
   
-  let longPressTimer = $state(null)
-  let longPressTriggered = $state(false)
-  
   onMount(() => {
     store.load()
   })
@@ -47,34 +44,9 @@
     currentScreen = 'today'
   }
   
-  function handleTouchStart(task) {
-    longPressTriggered = false
-    longPressTimer = setTimeout(() => {
-      longPressTriggered = true
-      if (navigator.vibrate) navigator.vibrate(30)
-      openEditTask(task)
-    }, 500)
-  }
-  
-  function handleTouchEnd(task) {
-    if (longPressTimer) {
-      clearTimeout(longPressTimer)
-      longPressTimer = null
-    }
-    if (!longPressTriggered) {
-      if (!task.completedDates.includes(currentDate)) {
-        store.toggleComplete(task.id)
-      }
-    }
-    longPressTriggered = false
-  }
-  
-  function handleTouchCancel() {
-    if (longPressTimer) {
-      clearTimeout(longPressTimer)
-      longPressTimer = null
-    }
-    longPressTriggered = false
+  function handleTaskClick(task) {
+    console.log('Task clicked:', task.text)
+    store.toggleComplete(task.id)
   }
   
   function swipeLeft() {
@@ -133,35 +105,28 @@
         {:else}
           <ul class="space-y-6">
             {#each store.getTasksForDate(currentDate) as task (task.id)}
-              <li
-                class="text-4xl font-bold cursor-pointer transition-all duration-300 select-none active:opacity-50"
-                class:line-through={task.completedDates.includes(currentDate)}
-                class:opacity-30={task.completedDates.includes(currentDate)}
-                class:blur-sm={task.isDissolving}
-                class:opacity-0={task.isDissolving}
-                class:scale-95={task.isDissolving}
-                ontouchstart={() => handleTouchStart(task)}
-                ontouchend={() => handleTouchEnd(task)}
-                ontouchcancel={handleTouchCancel}
-                onclick={(e) => {
-                  if (e.pointerType === 'mouse' || e.pointerType === 'pen') {
-                    if (!task.completedDates.includes(currentDate)) {
-                      store.toggleComplete(task.id)
-                    }
-                  }
-                }}
-                oncontextmenu={(e) => {
-                  e.preventDefault()
-                  openEditTask(task)
-                }}
-              >
-                {task.text}
+              <li>
+                <button
+                  class="w-full text-left text-4xl font-bold transition-all duration-300 active:opacity-50"
+                  class:line-through={task.completedDates.includes(currentDate)}
+                  class:opacity-30={task.completedDates.includes(currentDate)}
+                  class:blur-sm={task.isDissolving}
+                  class:opacity-0={task.isDissolving}
+                  class:scale-95={task.isDissolving}
+                  onclick={() => handleTaskClick(task)}
+                  oncontextmenu={(e) => {
+                    e.preventDefault()
+                    openEditTask(task)
+                  }}
+                >
+                  {task.text}
+                </button>
               </li>
             {/each}
           </ul>
           
           <p class="mt-8 text-xs font-normal opacity-20 text-center">
-            TAP TO COMPLETE · HOLD TO EDIT
+            TAP TO COMPLETE · RIGHT-CLICK TO EDIT
           </p>
         {/if}
       </main>
