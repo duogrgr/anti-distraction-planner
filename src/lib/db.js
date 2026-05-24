@@ -6,6 +6,11 @@ const dbPromise = openDB('anti-distraction-planner', 1, {
   },
 })
 
+// Утилита для превращения прокси Svelte в обычный объект
+function toPlain(obj) {
+  return JSON.parse(JSON.stringify(obj))
+}
+
 export async function getTasks() {
   const db = await dbPromise
   return db.getAll('tasks')
@@ -13,12 +18,12 @@ export async function getTasks() {
 
 export async function addTask(task) {
   const db = await dbPromise
-  await db.put('tasks', task)
+  await db.put('tasks', toPlain(task))
 }
 
 export async function updateTask(task) {
   const db = await dbPromise
-  await db.put('tasks', task)
+  await db.put('tasks', toPlain(task))
 }
 
 export async function deleteTask(id) {
