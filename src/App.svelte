@@ -18,6 +18,8 @@
   
   let longPressTimer = $state(null)
   let longPressTriggered = $state(false)
+  let touchStartX = $state(0)
+  let touchStartY = $state(0)
   
   let slideDirection = $state('left')
   
@@ -87,9 +89,13 @@
     currentScreen = 'today'
   }
   
-  function handleTouchStart(task) {
+  function handleTouchStart(e, task) {
     if (task.isDissolving) return
+    
+    touchStartX = e.touches[0].clientX
+    touchStartY = e.touches[0].clientY
     longPressTriggered = false
+    
     longPressTimer = setTimeout(() => {
       longPressTriggered = true
       if (navigator.vibrate) navigator.vibrate(30)
@@ -97,13 +103,17 @@
     }, 500)
   }
   
-  function handleTouchMove() {
-    // Движение пальца отменяет long press и сбрасывает флаг
-    if (longPressTimer) {
-      clearTimeout(longPressTimer)
-      longPressTimer = null
+  function handleTouchMove(e) {
+    const deltaX = Math.abs(e.touches[0].clientX - touchStartX)
+    const deltaY = Math.abs(e.touches[0].clientY - touchStartY)
+    
+    // Отменяем long press только если движение больше 10px
+    if (deltaX > 10 || deltaY > 10) {
+      if (longPressTimer) {
+        clearTimeout(longPressTimer)
+        longPressTimer = null
+      }
     }
-    longPressTriggered = false
   }
   
   function handleTouchEnd(task) {
@@ -215,7 +225,7 @@
                     class:line-through={task.completedDates.includes(currentDate)}
                     class:opacity-30={task.completedDates.includes(currentDate)}
                     style="text-align: var(--list-alignment)"
-                    ontouchstart={() => handleTouchStart(task)}
+                    ontouchstart={(e) => handleTouchStart(e, task)}
                     ontouchmove={handleTouchMove}
                     ontouchend={() => handleTouchEnd(task)}
                     ontouchcancel={handleTouchCancel}
@@ -249,7 +259,7 @@
     {/key}
   </div>
 {:else if currentScreen === 'input'}
-  <Input task={editingTask} onDone={handleInputDone} />
+  <Input task={editingTask} selectedDate={currentDate} onDone={handleInputDone} />
 {:else if currentScreen === 'settings'}
   <Settings onClose={() => currentScreen = 'today'} />
 {/if}

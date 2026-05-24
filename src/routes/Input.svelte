@@ -2,7 +2,7 @@
   import { useTasks } from '../lib/stores/tasks.svelte.js'
   import { onMount } from 'svelte'
   
-  let { task = null, onDone = () => {} } = $props()
+  let { task = null, selectedDate = new Date().toISOString().split('T')[0], onDone = () => {} } = $props()
   
   const store = useTasks()
   
@@ -25,7 +25,7 @@
     if (isEditing) {
       await store.update(task.id, { text: text.trim(), repeat })
     } else {
-      await store.add(text.trim(), repeat)
+      await store.add(text.trim(), repeat, selectedDate)
     }
     
     text = ''
@@ -60,8 +60,7 @@
     onkeydown={handleKeydown}
     placeholder="what needs to be done?"
     class="flex-1 w-full bg-transparent text-4xl font-bold placeholder:opacity-20 outline-none resize-none leading-tight"
-    autofocus
-  />
+  ></textarea>
   
   <div class="mt-8 space-y-6">
     <button

@@ -37,17 +37,18 @@ export function useTasks() {
     })
   }
 
-  async function add(text, repeat = 'none') {
-    const task = {
-      id: crypto.randomUUID(),
-      text,
-      createdAt: Date.now(),
-      repeat,
-      completedDates: [],
-    }
-    await addTask(task)
-    tasks = [...tasks, task]
+  async function add(text, repeat = 'none', date = null) {
+  const createdAt = date ? new Date(date).getTime() : Date.now()
+  const task = {
+    id: crypto.randomUUID(),
+    text,
+    createdAt,
+    repeat,
+    completedDates: [],
   }
+  await addTask(task)
+  tasks = [...tasks, task]
+}
 
   async function toggleComplete(id) {
     const taskIndex = tasks.findIndex((t) => t.id === id)
