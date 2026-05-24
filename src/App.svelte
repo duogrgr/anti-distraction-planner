@@ -11,8 +11,12 @@
   const theme = useTheme()
   
   let currentDate = $state(new Date().toISOString().split('T')[0])
-  let currentScreen = $state('today') // 'calendar' | 'today' | 'input' | 'settings'
+  let currentScreen = $state('today')
   let editingTask = $state(null)
+  
+  // Для long press
+  let longPressTimer = $state(null)
+  let longPressTriggered = $state(false)
   
   onMount(() => {
     store.load()
@@ -34,6 +38,12 @@
     currentScreen = 'input'
   }
   
+  async function deleteTask(task) {
+    if (confirm(`Delete "${task.text}"?`)) {
+      await store.remove(task.id)
+    }
+  }
+  
   function handleInputDone() {
     currentScreen = 'today'
     editingTask = null
@@ -44,20 +54,46 @@
     currentScreen = 'today'
   }
   
-  function swipeLeft() {
-    if (currentScreen === 'calendar') {
-      currentScreen = 'today'
-    } else if (currentScreen === 'today') {
-      currentScreen = 'input'
+  // Long press логика
+  function handleTouchStart(task) {
+    longPressTriggered = false
+    longPressTimer = setTimeout(() => {
+      longPressTriggered = true
+      openEditTask(task)
+    }, 500)
+  }
+  
+  function handleTouchEnd(task) {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer)
+      longPressTimer = null
     }
+    
+    // Если long press не сработал — это обычный тап
+    if (!longPressTriggered) {
+      if (!task.completedDates.includes(currentDate)) {
+        store.toggleComplete(task.id)
+      }
+    }
+    longPressTriggered = false
+  }
+  
+  function handleTouchCancel() {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer)
+      longPressTimer = null
+    }
+    longPressTriggered = false
+  }
+  
+  function swipeLeft() {
+    if (currentScreen === 'calendar') currentScreen = 'today'
+    else if (currentScreen === 'today') currentScreen = 'input'
   }
   
   function swipeRight() {
-    if (currentScreen === 'input') {
-      currentScreen = 'today'
-    } else if (currentScreen === 'today') {
-      currentScreen = 'calendar'
-    }
+    if (currentScreen === 'input') currentScreen = 'today'
+    else if (currentScreen === 'today') currentScreen = 'calendar'
   }
 </script>
 
@@ -103,14 +139,20 @@
           <ul class="space-y-6">
             {#each store.getTasksForDate(currentDate) as task (task.id)}
               <li
-                class="text-4xl font-bold cursor-pointer transition-all duration-300"
+                class="text-4xl font-bold cursor-pointer transition-all duration-300 select-none"
                 class:line-through={task.completedDates.includes(currentDate)}
                 class:opacity-30={task.completedDates.includes(currentDate)}
                 class:blur-sm={task.isDissolving}
                 class:opacity-0={task.isDissolving}
-                onclick={() => {
-                  if (!task.completedDates.includes(currentDate)) {
-                    store.toggleComplete(task.id)
+                ontouchstart={() => handleTouchStart(task)}
+                ontouchend={() => handleTouchEnd(task)}
+                ontouchcancel={handleTouchCancel}
+                onclick={(e) => {
+                  // Для десктопа без touch
+                  if (e.pointerType === 'mouse' || e.pointerType === 'pen') {
+                    if (!task.completedDates.includes(currentDate)) {
+                      store.toggleComplete(task.id)
+                    }
                   }
                 }}
                 oncontextmenu={(e) => {
@@ -122,6 +164,11 @@
               </li>
             {/each}
           </ul>
+          
+          <!-- Подсказка -->
+          <p class="mt-8 text-xs font-normal opacity-20 text-center">
+            TAP TO COMPLETE · HOLD TO EDIT
+          </p>
         {/if}
       </main>
       

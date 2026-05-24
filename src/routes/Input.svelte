@@ -14,7 +14,6 @@
   const title = $derived(isEditing ? 'EDIT TASK' : 'NEW TASK')
   
   onMount(() => {
-    // Автофокус с задержкой для мобильных
     setTimeout(() => {
       textareaElement?.focus()
     }, 100)
@@ -32,6 +31,14 @@
     text = ''
     repeat = 'none'
     onDone()
+  }
+  
+  async function remove() {
+    if (!isEditing) return
+    if (confirm(`Delete "${task.text}"?`)) {
+      await store.remove(task.id)
+      onDone()
+    }
   }
   
   function handleKeydown(e) {
@@ -71,6 +78,15 @@
     >
       SAVE
     </button>
+    
+    {#if isEditing}
+      <button
+        onclick={remove}
+        class="w-full py-3 text-xl font-bold opacity-40 hover:opacity-100 transition-opacity"
+      >
+        DELETE
+      </button>
+    {/if}
   </div>
 </div>
 
