@@ -50,6 +50,7 @@
   
   // ===== LONG PRESS ЛОГИКА =====
   function handleTouchStart(task) {
+    if (task.isDissolving) return
     longPressTriggered = false
     longPressTimer = setTimeout(() => {
       longPressTriggered = true
@@ -64,10 +65,8 @@
       longPressTimer = null
     }
     
-    if (!longPressTriggered) {
-      if (!task.completedDates.includes(currentDate)) {
-        store.toggleComplete(task.id)
-      }
+    if (!longPressTriggered && !task.isDissolving) {
+      store.toggleComplete(task.id)
     }
     longPressTriggered = false
   }
@@ -82,10 +81,9 @@
   
   function handleClick(e, task) {
     if (e.pointerType === 'touch') return
+    if (task.isDissolving) return
     
-    if (!task.completedDates.includes(currentDate)) {
-      store.toggleComplete(task.id)
-    }
+    store.toggleComplete(task.id)
   }
   
   function swipeLeft() {
