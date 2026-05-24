@@ -1,9 +1,9 @@
 const STORAGE_KEY = 'planner-settings'
 
 const DEFAULTS = {
-  fontSize: 'md',      // sm | md | lg | xl
-  alignment: 'left',   // left | center | right
-  border: 'normal',    // narrow | normal | wide
+  fontSize: 'md',
+  alignment: 'left',
+  border: 'normal',
 }
 
 let settings = $state(loadSettings())
@@ -27,7 +27,6 @@ function applySettings() {
   if (typeof document === 'undefined') return
   const root = document.documentElement
   
-  // Размер шрифта задач
   const fontSizes = {
     sm: '24px',
     md: '36px',
@@ -36,10 +35,8 @@ function applySettings() {
   }
   root.style.setProperty('--task-font-size', fontSizes[settings.fontSize])
   
-  // Выравнивание
   root.style.setProperty('--list-alignment', settings.alignment)
   
-  // Border (горизонтальные отступы)
   const borders = {
     narrow: 'clamp(48px, 15vw, 200px)',
     normal: 'clamp(24px, 6vw, 80px)',
@@ -60,7 +57,6 @@ function reset() {
   applySettings()
 }
 
-// Применяем сразу
 applySettings()
 
 export function useSettings() {
