@@ -134,28 +134,29 @@
           <ul class="space-y-6">
             {#each store.getTasksForDate(currentDate) as task (task.id)}
               <li
-                class="text-4xl font-bold cursor-pointer transition-all duration-300 select-none active:opacity-50"
-                class:line-through={task.completedDates.includes(currentDate)}
-                class:opacity-30={task.completedDates.includes(currentDate)}
-                class:blur-sm={task.isDissolving}
-                class:opacity-0={task.isDissolving}
-                ontouchstart={() => handleTouchStart(task)}
-                ontouchend={() => handleTouchEnd(task)}
-                ontouchcancel={handleTouchCancel}
-                onclick={(e) => {
-                  if (e.pointerType === 'mouse' || e.pointerType === 'pen') {
-                    if (!task.completedDates.includes(currentDate)) {
-                      store.toggleComplete(task.id)
-                    }
-                  }
-                }}
-                oncontextmenu={(e) => {
-                  e.preventDefault()
-                  openEditTask(task)
-                }}
-              >
-                {task.text}
-              </li>
+  class="text-4xl font-bold cursor-pointer transition-all duration-300 select-none active:opacity-50"
+  class:line-through={task.completedDates.includes(currentDate)}
+  class:opacity-30={task.completedDates.includes(currentDate)}
+  class:blur-sm={task.isDissolving}
+  class:opacity-0={task.isDissolving}
+  class:scale-95={task.isDissolving}
+  ontouchstart={() => handleTouchStart(task)}
+  ontouchend={() => handleTouchEnd(task)}
+  ontouchcancel={handleTouchCancel}
+  onclick={(e) => {
+    if (e.pointerType === 'mouse' || e.pointerType === 'pen') {
+      if (!task.completedDates.includes(currentDate)) {
+        store.toggleComplete(task.id)
+      }
+    }
+  }}
+  oncontextmenu={(e) => {
+    e.preventDefault()
+    openEditTask(task)
+  }}
+>
+  {task.text}
+</li>
             {/each}
           </ul>
           
