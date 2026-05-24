@@ -86,7 +86,7 @@
             class:border-current={settings.fontSize === size}
             class:bg-foreground={settings.fontSize === size}
             class:text-background={settings.fontSize === size}
-            class:border-current/20={settings.fontSize !== size}
+            class:opacity-40={settings.fontSize !== size}
           >
             {size.toUpperCase()}
           </button>
@@ -109,7 +109,7 @@
             class:border-current={settings.alignment === option.value}
             class:bg-foreground={settings.alignment === option.value}
             class:text-background={settings.alignment === option.value}
-            class:border-current/20={settings.alignment !== option.value}
+            class:opacity-40={settings.alignment !== option.value}
           >
             {option.label}
           </button>
@@ -132,7 +132,7 @@
             class:border-current={settings.border === option.value}
             class:bg-foreground={settings.border === option.value}
             class:text-background={settings.border === option.value}
-            class:border-current/20={settings.border !== option.value}
+            class:opacity-40={settings.border !== option.value}
           >
             {option.label}
           </button>
