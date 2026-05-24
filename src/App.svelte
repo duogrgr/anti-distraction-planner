@@ -14,6 +14,10 @@
   let currentScreen = $state('today')
   let editingTask = $state(null)
   
+  // Long press состояние
+  let longPressTimer = $state(null)
+  let longPressTriggered = $state(false)
+  
   onMount(() => {
     store.load()
   })
@@ -44,9 +48,48 @@
     currentScreen = 'today'
   }
   
-  function handleTaskClick(task) {
-    console.log('Task clicked:', task.text)
-    store.toggleComplete(task.id)
+  // ===== LONG PRESS ЛОГИКА =====
+  function handleTouchStart(task) {
+    longPressTriggered = false
+    longPressTimer = setTimeout(() => {
+      longPressTriggered = true
+      // Вибрация на поддерживаемых устройствах
+      if (navigator.vibrate) navigator.vibrate(30)
+      openEditTask(task)
+    }, 500)
+  }
+  
+  function handleTouchEnd(task) {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer)
+      longPressTimer = null
+    }
+    
+    // Если long press не сработал — это обычный тап
+    if (!longPressTriggered) {
+      if (!task.completedDates.includes(currentDate)) {
+        store.toggleComplete(task.id)
+      }
+    }
+    longPressTriggered = false
+  }
+  
+  function handleTouchCancel() {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer)
+      longPressTimer = null
+    }
+    longPressTriggered = false
+  }
+  
+  // Для десктопа — обычный клик
+  function handleClick(e, task) {
+    // Игнорируем touch events (они уже обработаны)
+    if (e.pointerType === 'touch') return
+    
+    if (!task.completedDates.includes(currentDate)) {
+      store.toggleComplete(task.id)
+    }
   }
   
   function swipeLeft() {
@@ -113,7 +156,10 @@
                   class:blur-sm={task.isDissolving}
                   class:opacity-0={task.isDissolving}
                   class:scale-95={task.isDissolving}
-                  onclick={() => handleTaskClick(task)}
+                  ontouchstart={() => handleTouchStart(task)}
+                  ontouchend={() => handleTouchEnd(task)}
+                  ontouchcancel={handleTouchCancel}
+                  onclick={(e) => handleClick(e, task)}
                   oncontextmenu={(e) => {
                     e.preventDefault()
                     openEditTask(task)
@@ -126,7 +172,7 @@
           </ul>
           
           <p class="mt-8 text-xs font-normal opacity-20 text-center">
-            TAP TO COMPLETE · RIGHT-CLICK TO EDIT
+            TAP TO COMPLETE · HOLD TO EDIT
           </p>
         {/if}
       </main>
