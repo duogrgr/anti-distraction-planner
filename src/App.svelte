@@ -2,6 +2,7 @@
   import { useTasks } from './lib/stores/tasks.svelte.js'
   import { useTheme } from './lib/stores/theme.svelte.js'
   import { onMount } from 'svelte'
+  import { flip } from 'svelte/animate'
   import Input from './routes/Input.svelte'
   import Calendar from './routes/Calendar.svelte'
   import Settings from './routes/Settings.svelte'
@@ -14,9 +15,17 @@
   let currentScreen = $state('today')
   let editingTask = $state(null)
   
-  // Long press состояние
   let longPressTimer = $state(null)
   let longPressTriggered = $state(false)
+  
+  // Кастомная transition: объединяет fade и scale
+  function fadeScale(node, { duration = 400, easing = (t) => t, baseScale = 0.95 } = {}) {
+    return {
+      duration,
+      easing,
+      css: (t) => `opacity: ${t}; transform: scale(${baseScale + (1 - baseScale) * t})`
+    }
+  }
   
   onMount(() => {
     store.load()
@@ -48,7 +57,6 @@
     currentScreen = 'today'
   }
   
-  // ===== LONG PRESS ЛОГИКА =====
   function handleTouchStart(task) {
     if (task.isDissolving) return
     longPressTriggered = false
@@ -148,14 +156,14 @@
         {:else}
           <ul class="task-list space-y-6">
             {#each store.getTasksForDate(currentDate) as task (task.id)}
-              <li>
+              <li
+                transition:fadeScale={{ duration: 400, baseScale: 0.95 }}
+                animate:flip={{ duration: 300, easing: (t) => 1 - Math.pow(1 - t, 3) }}
+              >
                 <button
                   class="w-full task-text font-bold transition-all duration-300 active:opacity-50"
                   class:line-through={task.completedDates.includes(currentDate)}
                   class:opacity-30={task.completedDates.includes(currentDate)}
-                  class:blur-sm={task.isDissolving}
-                  class:opacity-0={task.isDissolving}
-                  class:scale-95={task.isDissolving}
                   style="text-align: var(--list-alignment)"
                   ontouchstart={() => handleTouchStart(task)}
                   ontouchend={() => handleTouchEnd(task)}
