@@ -19,10 +19,8 @@
   let longPressTimer = $state(null)
   let longPressTriggered = $state(false)
   
-  // Направление слайда для анимации
   let slideDirection = $state('left')
   
-  // Сегодняшний день и проверка "не старше 7 дней"
   const today = $derived(new Date().toISOString().split('T')[0])
   const isToday = $derived(currentDate === today)
   
@@ -100,11 +98,12 @@
   }
   
   function handleTouchMove() {
-    // Движение пальца отменяет long press (чтобы не конфликтовало со свайпом)
+    // Движение пальца отменяет long press и сбрасывает флаг
     if (longPressTimer) {
       clearTimeout(longPressTimer)
       longPressTimer = null
     }
+    longPressTriggered = false
   }
   
   function handleTouchEnd(task) {
