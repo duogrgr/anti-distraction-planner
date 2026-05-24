@@ -6,6 +6,13 @@
   --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
+/* Значения по умолчанию — будут переопределены JS */
+:root {
+  --task-font-size: 36px;
+  --list-alignment: left;
+  --list-padding-x: clamp(24px, 6vw, 80px);
+}
+
 /* Светлая тема по умолчанию */
 :root,
 html[data-theme="light"] {
@@ -46,4 +53,16 @@ body {
 body {
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Утилиты для списка задач */
+.task-text {
+  font-size: var(--task-font-size);
+  line-height: 1.1;
+}
+
+.task-list {
+  padding-left: var(--list-padding-x);
+  padding-right: var(--list-padding-x);
+  text-align: var(--list-alignment);
 }

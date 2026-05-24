@@ -53,7 +53,6 @@
     longPressTriggered = false
     longPressTimer = setTimeout(() => {
       longPressTriggered = true
-      // Вибрация на поддерживаемых устройствах
       if (navigator.vibrate) navigator.vibrate(30)
       openEditTask(task)
     }, 500)
@@ -65,7 +64,6 @@
       longPressTimer = null
     }
     
-    // Если long press не сработал — это обычный тап
     if (!longPressTriggered) {
       if (!task.completedDates.includes(currentDate)) {
         store.toggleComplete(task.id)
@@ -82,9 +80,7 @@
     longPressTriggered = false
   }
   
-  // Для десктопа — обычный клик
   function handleClick(e, task) {
-    // Игнорируем touch events (они уже обработаны)
     if (e.pointerType === 'touch') return
     
     if (!task.completedDates.includes(currentDate)) {
@@ -142,20 +138,27 @@
         {:else if store.isLoading}
           <p class="text-4xl font-bold opacity-40">Loading...</p>
         {:else if store.getTasksForDate(currentDate).length === 0}
-          <button onclick={openNewTask} class="text-4xl font-bold opacity-40 hover:opacity-100 transition-opacity">
-            CLEAR MIND
-          </button>
+          <div class="task-list">
+            <button 
+              onclick={openNewTask} 
+              class="task-text font-bold opacity-40 hover:opacity-100 transition-opacity w-full"
+              style="text-align: var(--list-alignment)"
+            >
+              CLEAR MIND
+            </button>
+          </div>
         {:else}
-          <ul class="space-y-6">
+          <ul class="task-list space-y-6">
             {#each store.getTasksForDate(currentDate) as task (task.id)}
               <li>
                 <button
-                  class="w-full text-left text-4xl font-bold transition-all duration-300 active:opacity-50"
+                  class="w-full task-text font-bold transition-all duration-300 active:opacity-50"
                   class:line-through={task.completedDates.includes(currentDate)}
                   class:opacity-30={task.completedDates.includes(currentDate)}
                   class:blur-sm={task.isDissolving}
                   class:opacity-0={task.isDissolving}
                   class:scale-95={task.isDissolving}
+                  style="text-align: var(--list-alignment)"
                   ontouchstart={() => handleTouchStart(task)}
                   ontouchend={() => handleTouchEnd(task)}
                   ontouchcancel={handleTouchCancel}

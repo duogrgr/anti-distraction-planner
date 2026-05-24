@@ -1,10 +1,12 @@
 <script>
   import { exportTasks, importTasks, getTasks } from '../lib/db.js'
   import { useTasks } from '../lib/stores/tasks.svelte.js'
+  import { useSettings } from '../lib/stores/settings.svelte.js'
   
   let { onClose = () => {} } = $props()
   
   const store = useTasks()
+  const settings = useSettings()
   
   let status = $state('')
   let fileInput = $state(null)
@@ -55,13 +57,12 @@
       status = `ERROR: ${err.message}`
     }
     
-    // Сбрасываем input, чтобы можно было импортировать тот же файл повторно
     event.target.value = ''
   }
 </script>
 
-<div class="min-h-screen bg-background text-foreground p-8 flex flex-col">
-  <header class="mb-12 flex justify-between items-start">
+<div class="min-h-screen bg-background text-foreground flex flex-col">
+  <header class="p-8 pb-4 flex justify-between items-start">
     <button 
       onclick={onClose}
       class="text-sm font-normal opacity-40 hover:opacity-100 transition-opacity"
@@ -72,37 +73,125 @@
     <div class="w-12"></div>
   </header>
   
-  <main class="flex-1 flex flex-col justify-center space-y-6">
-    <button
-      onclick={handleExport}
-      class="w-full py-6 text-3xl font-bold border-t-2 border-b-2 border-current hover:opacity-60 transition-opacity"
-    >
-      EXPORT
-    </button>
+  <main class="flex-1 overflow-y-auto px-8 pb-8 space-y-10">
     
-    <button
-      onclick={handleImportClick}
-      class="w-full py-6 text-3xl font-bold border-t-2 border-b-2 border-current hover:opacity-60 transition-opacity"
-    >
-      IMPORT
-    </button>
+    <!-- FONT SIZE -->
+    <section>
+      <h2 class="text-xs font-normal opacity-40 mb-4">FONT SIZE</h2>
+      <div class="flex gap-2">
+        {#each ['sm', 'md', 'lg', 'xl'] as size}
+          <button
+            onclick={() => settings.update('fontSize', size)}
+            class="flex-1 py-4 text-xl font-bold border-2 transition-all"
+            class:border-current={settings.fontSize === size}
+            class:bg-foreground={settings.fontSize === size}
+            class:text-background={settings.fontSize === size}
+            class:border-current/20={settings.fontSize !== size}
+          >
+            {size.toUpperCase()}
+          </button>
+        {/each}
+      </div>
+    </section>
     
-    <input
-      bind:this={fileInput}
-      type="file"
-      accept="application/json,.json"
-      onchange={handleImport}
-      class="hidden"
-    />
+    <!-- ALIGNMENT -->
+    <section>
+      <h2 class="text-xs font-normal opacity-40 mb-4">ALIGNMENT</h2>
+      <div class="flex gap-2">
+        {#each [
+          { value: 'left', label: '← LEFT' },
+          { value: 'center', label: '↔ CENTER' },
+          { value: 'right', label: 'RIGHT →' },
+        ] as option}
+          <button
+            onclick={() => settings.update('alignment', option.value)}
+            class="flex-1 py-4 text-lg font-bold border-2 transition-all"
+            class:border-current={settings.alignment === option.value}
+            class:bg-foreground={settings.alignment === option.value}
+            class:text-background={settings.alignment === option.value}
+            class:border-current/20={settings.alignment !== option.value}
+          >
+            {option.label}
+          </button>
+        {/each}
+      </div>
+    </section>
+    
+    <!-- BORDER -->
+    <section>
+      <h2 class="text-xs font-normal opacity-40 mb-4">MARGIN</h2>
+      <div class="flex gap-2">
+        {#each [
+          { value: 'narrow', label: 'NARROW' },
+          { value: 'normal', label: 'NORMAL' },
+          { value: 'wide', label: 'WIDE' },
+        ] as option}
+          <button
+            onclick={() => settings.update('border', option.value)}
+            class="flex-1 py-4 text-lg font-bold border-2 transition-all"
+            class:border-current={settings.border === option.value}
+            class:bg-foreground={settings.border === option.value}
+            class:text-background={settings.border === option.value}
+            class:border-current/20={settings.border !== option.value}
+          >
+            {option.label}
+          </button>
+        {/each}
+      </div>
+    </section>
+    
+    <hr class="border-current/10" />
+    
+    <!-- DATA -->
+    <section>
+      <h2 class="text-xs font-normal opacity-40 mb-4">DATA</h2>
+      <div class="space-y-3">
+        <button
+          onclick={handleExport}
+          class="w-full py-5 text-2xl font-bold border-t-2 border-b-2 border-current hover:opacity-60 transition-opacity"
+        >
+          EXPORT
+        </button>
+        
+        <button
+          onclick={handleImportClick}
+          class="w-full py-5 text-2xl font-bold border-t-2 border-b-2 border-current hover:opacity-60 transition-opacity"
+        >
+          IMPORT
+        </button>
+      </div>
+      
+      <input
+        bind:this={fileInput}
+        type="file"
+        accept="application/json,.json"
+        onchange={handleImport}
+        class="hidden"
+      />
+    </section>
+    
+    <!-- RESET -->
+    <section>
+      <button
+        onclick={() => {
+          if (confirm('Reset all settings to default?')) {
+            settings.reset()
+          }
+        }}
+        class="w-full py-3 text-sm font-normal opacity-40 hover:opacity-100 transition-opacity"
+      >
+        RESET TO DEFAULTS
+      </button>
+    </section>
     
     {#if status}
-      <p class="text-center text-sm font-normal opacity-60 mt-8">
+      <p class="text-center text-sm font-normal opacity-60 pt-4">
         {status}
       </p>
     {/if}
   </main>
   
-  <footer class="text-center text-xs font-normal opacity-30">
+  <footer class="px-8 py-4 text-center text-xs font-normal opacity-30 border-t border-current/10">
     YOUR DATA IS STORED LOCALLY
   </footer>
 </div>
